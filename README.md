@@ -80,7 +80,8 @@ that cannot be verified, and guessing values would be invention.
 ### Target: train incidents lasting 15 minutes or more (D2)
 
 - **Population.** Train incidents only (29,167). All 16,394 station incidents
-  are in the lowest duration bin, so they can never be positive.
+  are in the lowest duration bin, so they can never be positive. A later
+  check (D7, below) also removes 280 train incidents with no single place.
 - **Definition.** A major interruption is a train incident of 15 minutes or
   more: 1,103 incidents, 3.8%. This is the lowest threshold that can be
   defended as "major" in front of stakeholders. Incidents of 30 minutes or
@@ -137,9 +138,9 @@ that cannot be verified, and guessing values would be invention.
 
 - **Model comparison.** Four yearly folds (test years 2021 to 2024), each
   trained on all earlier years. Results are shown per fold and pooled: the
-  pooled test folds hold 693 major incidents, against 121 to 222 in any
-  single year. No random splits.
-- **Final holdout.** 2025 (January to September, 121 major incidents),
+  pooled test folds hold 652 major incidents (after D7), against 99 to 195
+  in any single year. No random splits.
+- **Final holdout.** 2025 (January to September, 99 major incidents after D7),
   scored once by a model trained on 2019 to 2024, and never used to choose
   between models. It is the most recent period, and for incidents of 5
   minutes or more its counts match the STM's published rate.
@@ -155,9 +156,144 @@ that cannot be verified, and guessing values would be invention.
 
 [Options considered: D4](PLAN.md#d4-validation-scheme-metrics-and-baselines-step-5).
 
+### Models: a simple model first, a complex one only if it earns its place (D6)
+
+- **Two models.** A regularised logistic regression (one-hot encoded fields,
+  regularisation strength chosen on the validation folds) and gradient
+  boosting with fixed, conservative settings and no tuning. Neither uses
+  class weights, which would inflate predicted probabilities.
+- **Rule fixed in advance.** Logistic regression is the final model unless
+  gradient boosting's pooled PR-AUC is more than about 0.01 higher and ahead
+  in most folds. Its coefficients are easier to explain and defend.
+- **Scope.** Gradient boosting is run on the headline feature set only;
+  logistic regression on all three sets. The reduced scope of the modelling
+  step is recorded as [D5](PLAN.md#d5-scope-of-step-6-reduced-time-budget).
+
+[Options considered: D6](PLAN.md#d6-models-and-final-model-rule-step-6).
+
+### A check that changed the population: incidents with no single place (D7)
+
+- **How it was found.** In the first run the model scored far higher on the
+  2025 holdout (PR-AUC 0.287) than on the validation folds (0.168). Every one
+  of the 17 highest-scored holdout incidents had a location code that is only
+  a line or a list of lines ("Ligne 1, 2"), together with a fire or smoke
+  symptom.
+- **Leak or not: the data cannot say.** The code names no place and is
+  concentrated on major incidents (26.8% major, against 3.6% of the others),
+  which suggests it is updated as an incident spreads. But some incidents may
+  affect a whole line from the first minute (a power or signalling problem),
+  and then the code is legitimate start-time information.
+- **Choice.** These 280 incidents are excluded from the headline model,
+  training and test, as the cautious choice, and both results are reported.
+  For gradient boosting, the model of the first run, the holdout PR-AUC is
+  0.122 without them and 0.287 with them. If the STM confirms the
+  code is recorded at the start, the higher result applies to those incidents.
+- **Cost.** 6.8% of major incidents (75 of 1,103) are outside the model's
+  scope. In use, incidents logged without a specific place would need a
+  separate rule, for example escalating fire or smoke by default. A timestamp
+  for when the location is recorded or updated would settle the question.
+- **Honest caveat.** This decision was triggered by looking at holdout
+  results, so the 2025 figures are a little less independent than planned.
+  It lowers the reported score, and the choice between models was re-made on
+  the validation folds only (D8).
+
+[Options considered: D7](PLAN.md#d7-incidents-with-no-single-place-removed-from-the-modelling-population-step-6).
+
+### Final model: logistic regression, overriding the pre-set rule (D8)
+
+- **What the rule said.** Gradient boosting, by a thin margin: pooled PR-AUC
+  0.131 against 0.108, ahead in 3 of 4 folds.
+- **Why it was overridden.** Fold by fold, the difference is not robust
+  where it matters operationally: at a 10% alert budget the two models catch
+  almost the same number of major incidents over four years (217 for
+  logistic regression, 215 for gradient boosting). Logistic regression is
+  preferred because every prediction can be traced to a short list of
+  coefficients.
+- **What it costs.** A lower headline holdout PR-AUC (0.096 against 0.122),
+  and fewer major incidents caught at a 5% budget (118 against 137 on the
+  folds). A rule fixed in advance was overridden after seeing results; the
+  override goes towards the simpler, lower-scoring model, was made on the
+  folds, and gradient boosting stays reported alongside.
+
+[Options considered: D8](PLAN.md#d8-logistic-regression-as-the-final-model-overriding-the-d6-rule-step-6).
+
 ## Results
 
-_To be completed._
+Full results are in the notebook, [sections 8 and 9](notebooks/analysis.ipynb).
+Figures below are for the modelling population after decision D7: 28,887
+train incidents, 1,028 of them major (3.6%).
+
+### Predicting major interruptions
+
+| Model | PR-AUC, 4 folds pooled | PR-AUC, 2025 holdout (95% interval) | Major incidents caught in the top 5% / 10%, 2025 |
+|---|---|---|---|
+| Constant rate (baseline) | 0.038 | 0.033 (0.027 to 0.039) | 4 / 9 of 99 |
+| Symptom only (baseline) | 0.072 | 0.048 (0.037 to 0.065) | 12 / 21 of 99 |
+| Logistic regression, strict set (lower bound) | 0.086 | 0.071 (0.053 to 0.111) | 11 / 23 of 99 |
+| **Logistic regression, headline set (final model)** | **0.108** | **0.096 (0.071 to 0.143)** | **16 / 32 of 99** |
+| Gradient boosting, headline set | 0.131 | 0.122 (0.085 to 0.190) | 21 / 31 of 99 |
+| Logistic regression, upper bound (not usable) | 0.634 | 0.614 (0.502 to 0.722) | 69 / 78 of 99 |
+
+- **The model works, modestly.** It has about three times the PR-AUC of a
+  constant rate and beats the symptom-only rule in every bootstrap resample.
+  Escalating the 10% highest-scored incidents would have caught 32 of the 99
+  major incidents of 2025, against 21 for the symptom rule and 9 by chance.
+  Two thirds of major incidents would still be missed.
+- **Which model is better depends on the STM's escalation budget.** The
+  share of incidents the control room can escalate decides it:
+
+  | Major incidents caught | Logistic regression | Gradient boosting |
+  |---|---|---|
+  | Four folds, 5% budget (of 652) | 118 | 137 |
+  | Four folds, 10% budget (of 652) | 217 | 215 |
+  | 2025 holdout, 5% budget (of 99) | 16 | 21 |
+  | 2025 holdout, 10% budget (of 99) | 32 | 31 |
+
+  At a 10% budget logistic regression matches gradient boosting, is steadier
+  across years (PR-AUC 0.099 to 0.118 per fold, against 0.109 to 0.153) and
+  can be explained to operators, so it is the final model (D8, above). At a
+  tight 5% budget gradient boosting catches about 16% more major incidents
+  (137 against 118 over the four folds). If the STM's capacity is that
+  limited, piloting gradient boosting would be worth it.
+- **The upper bound is the main message for data collection.** Adding the
+  response indicators (power cut, emergency team, evacuation, damage,
+  several lines) multiplies PR-AUC by about six. They are mostly
+  consequences of a long incident, so this is not achievable at the start,
+  but it shows what timestamping those actions could be worth.
+- **Probabilities are calibrated but rarely confident.** Predicted and
+  observed rates agree in every score band, yet only 9 of 3,004 holdout
+  incidents get a probability above 20%. The scores rank incidents; they
+  seldom say "this one will be major".
+- **"Train run attached" has the largest effect** (odds ratio 6.3 in the
+  logistic regression). Its recording drifts over time and it may partly
+  overlap with the outcome, which makes the run-attached ablation listed
+  under Further analysis the most important missing check.
+- **Rare severe events (30 minutes or more).** The same scores keep an edge
+  over the symptom rule (holdout PR-AUC 0.053 against 0.025), but on only 41
+  events.
+- **Robustness.** Excluding the 525 time/bin mismatches changes PR-AUC by
+  less than 0.01. Planned km as a feature and statutory holidays add nothing.
+
+### What drives major incidents, looking back
+
+This part explains past incidents and may therefore use the causes assigned
+after analysis, which the predictive model may not. Results are associations,
+not causes, and cause coding can drift over time.
+
+- **Customer-related causes are 60% of major incidents** (661 of 1,103):
+  "Méfait volontaire" alone is 42%, "Blessée ou malade" 14%. Their share rose
+  from about half in 2019 to about two thirds from 2022.
+- **Fixed equipment is 20%**, half of it track ("Service de la voie").
+  Rolling stock is 9%.
+- **Busy stations have many incidents but few long ones.** Interchange and
+  terminal stations hold 15% of major incidents; their rate of becoming major
+  is 2.2% and 1.1%, against 5.0% elsewhere.
+- **Per million planned km, lines diverge.** From 2019 to 2023 the green
+  line's rate of major incidents rises from 1.2 to 3.5 while the orange
+  line's falls from 1.4 to 0.8.
+- Delay minutes are estimated from the duration bins (lower edge; 49 minutes
+  for "30 min et plus", the median elapsed time of those incidents) and rank
+  the causes in the same order as counts.
 
 ## Further analysis (not done in the time available)
 
@@ -166,11 +302,11 @@ Each would test how far the results depend on one choice.
 
 | Analysis | What it would show |
 |---|---|
-| Ablation: headline set without "train run attached" | How much of the headline set's gain over the strict set comes from that one field, whose recording drifts and which may partly overlap with the outcome |
+| Ablation: headline set without "train run attached" | How much of the headline set's gain over the strict set comes from that one field, whose recording drifts and which may partly overlap with the outcome. The most important missing check: this field has the largest coefficient (odds ratio 6.3) |
 | Sliding training window (previous 3 years only) | Whether older years, with different reporting practice, help or hurt |
 | Target at 10 minutes or more | Whether conclusions hold under a looser definition of "major" |
-| Excluding the 280 rows whose location is a line list | Whether the residual leak accepted in the location grouping drives performance |
 | Permutation importance on the validation folds | Each feature's contribution, measured without relying on model coefficients |
+| Error analysis | Where the model fails: which major incidents it scores low, and which short incidents it scores high |
 
 ## Recommendations
 
@@ -190,6 +326,9 @@ src/              reusable Python modules
   verify.py         checks of the first-look observations
   features.py       targets and feature sets (decisions D2 and D3)
   validation.py     yearly train/test folds (decision D4)
+  model.py          baselines and models (decision D6)
+  evaluate.py       metrics, calibration table, bootstrap
+  drivers.py        driver analysis of past major incidents
 PLAN.md           work plan and decision log
 requirements.txt  pinned dependencies
 ```

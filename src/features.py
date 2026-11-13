@@ -6,10 +6,13 @@ Implements two decisions recorded in PLAN.md:
   published duration bin starts at 15 minutes or more.
 - D3 (features): three nested feature sets, from fields certainly known when an
   incident starts to fields that are probably consequences of a long incident.
+- D7 (population): incidents whose location code names no single place are
+  left out of the modelling population.
 
 Typical use:
 
     table = build_model_table(incidents)                  # one row per train incident
+    table = modelling_population(table)                   # drop incidents with no single place
     kept = fit_location_groups(table[table is training])  # learned on training rows only
     table = add_location_group(table, kept)
     X = feature_matrix(table, "headline")
@@ -69,6 +72,9 @@ FEATURE_SETS = {
     "headline": STRICT_FEATURES + FIRST_REPORT_FEATURES,
     # Upper bound, not a usable model.
     "upper_bound": STRICT_FEATURES + FIRST_REPORT_FEATURES + RESPONSE_FEATURES,
+    # Check only (decision D3): the headline set plus planned km for the
+    # incident's line and day. Tested and not kept.
+    "headline_plus_km": STRICT_FEATURES + FIRST_REPORT_FEATURES + ["planned_km_100k"],
 }
 
 # Columns that must never be used as features: they are the outcome, are
@@ -82,6 +88,7 @@ NEVER_FEATURES = [
     "vehicle", "car_door",                         # detail with unclear timing, left out
     "service_year",                                # would encode reporting drift
     "line", "location",                            # raw versions that can reveal a multi-line incident
+    "no_single_place",                             # defines the modelling population (D7), not a feature
 ] + list(TARGETS)
 
 # --------------------------------------------------------------------------
@@ -168,6 +175,8 @@ def build_model_table(incidents: pd.DataFrame) -> pd.DataFrame:
     table["symptom"] = train["symptom"].fillna(UNKNOWN_SYMPTOM)
     table["line_first"] = train["line"].map(first_line)
     table["location_clean"] = train["location"].map(clean_location)
+    # True when the location code is only a line or a list of lines (decision D7).
+    table["no_single_place"] = table["location_clean"] == OTHER_LOCATION
     table["between_stations"] = train["location"].str.contains("/")   # e.g. "Crémazie/Sauvé"
     table["start_hour"] = train["start_minutes"] // 60
     table["weekday"] = train["weekday"]
@@ -186,6 +195,31 @@ def build_model_table(incidents: pd.DataFrame) -> pd.DataFrame:
     table["several_lines"] = train["line"].map(is_several_lines)
 
     return table
+
+
+def modelling_population(table: pd.DataFrame) -> pd.DataFrame:
+    """Keep the incidents that have a single place (decision D7).
+
+    Incidents whose location code is only a line or a list of lines are left
+    out. The code names no place and is much more common among major
+    incidents, which suggests it may be updated as an incident spreads. It
+    cannot be shown either way, so these incidents are excluded as the
+    cautious choice and handled by a separate rule.
+    """
+    return table[~table["no_single_place"]]
+
+
+def add_planned_km(table: pd.DataFrame, daily_km: pd.DataFrame) -> pd.DataFrame:
+    """Add `planned_km_100k`: planned km (in units of 100,000) for the incident's line and day.
+
+    Used only for the check recorded in decision D3. Missing where the line is
+    unknown or the date is after the end of the km file.
+    """
+    km = daily_km.rename(columns={"line": "line_first", "calendar_date": "service_date"})
+    merged = table.merge(km, on=["line_first", "service_date"], how="left")
+    merged.index = table.index          # merge resets the index; put it back
+    merged["planned_km_100k"] = merged["planned_km"] / 100_000
+    return merged.drop(columns="planned_km")
 
 
 def fit_location_groups(training_table: pd.DataFrame,

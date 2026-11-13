@@ -58,11 +58,14 @@ def duration_summary(df: pd.DataFrame, by) -> pd.DataFrame:
     return summary
 
 
-def incidents_per_million_km(train: pd.DataFrame, km: pd.DataFrame) -> pd.DataFrame:
+def incidents_per_million_km(train: pd.DataFrame, km: pd.DataFrame,
+                             minutes: int = 5) -> pd.DataFrame:
     """Train incidents per million planned km, by year and line.
 
-    Only the period covered by the km file is used, and only incidents assigned
-    to a single line (a multi-line incident has no single km denominator).
+    Gives the rate for all train incidents and for those lasting at least
+    `minutes`. Only the period covered by the km file is used, and only
+    incidents assigned to a single line (a multi-line incident has no single
+    km denominator).
     """
     daily = daily_km(km)
     last_km_date = daily["calendar_date"].max()
@@ -75,12 +78,13 @@ def incidents_per_million_km(train: pd.DataFrame, km: pd.DataFrame) -> pd.DataFr
     in_scope = train[
         (train["service_date"] <= last_km_date) & train["line"].isin(SINGLE_LINES)
     ].copy()
-    in_scope["five_min_plus"] = in_scope["duration_bin_lower"] >= 5
+    long_column = f"incidents_{minutes}min_plus"
+    in_scope["is_long"] = in_scope["duration_bin_lower"] >= minutes
     grouped = in_scope.groupby(["service_year", "line"])
     counts = pd.DataFrame(
         {
             "incidents": grouped.size(),
-            "incidents_5min_plus": grouped["five_min_plus"].sum(),
+            long_column: grouped["is_long"].sum(),
         }
     )
     counts.index.names = ["year", "line"]
@@ -88,10 +92,38 @@ def incidents_per_million_km(train: pd.DataFrame, km: pd.DataFrame) -> pd.DataFr
     table = counts.join(km_by_year)
     table["million_km"] = table["planned_km"] / 1e6
     table["incidents_per_million_km"] = table["incidents"] / table["million_km"]
-    table["incidents_5min_plus_per_million_km"] = (
-        table["incidents_5min_plus"] / table["million_km"]
-    )
+    table[f"{long_column}_per_million_km"] = table[long_column] / table["million_km"]
     return table.drop(columns="planned_km")
+
+
+def quebec_holidays(years) -> pd.DatetimeIndex:
+    """Quebec statutory holidays for the given years.
+
+    Fixed dates, plus the holidays defined by a rule (for example "first
+    Monday of September"). Good Friday and Easter Monday are both included,
+    since employers choose one. Days moved because a holiday falls on a
+    weekend are not handled.
+    """
+    from dateutil.easter import easter      # date of Easter Sunday
+
+    days = []
+    for year in years:
+        easter_sunday = pd.Timestamp(easter(year))
+        mondays_may = pd.date_range(f"{year}-05-01", f"{year}-05-24", freq="W-MON")
+        mondays_sep = pd.date_range(f"{year}-09-01", f"{year}-09-30", freq="W-MON")
+        mondays_oct = pd.date_range(f"{year}-10-01", f"{year}-10-31", freq="W-MON")
+        days += [
+            pd.Timestamp(f"{year}-01-01"),          # New Year's Day
+            easter_sunday - pd.Timedelta(days=2),   # Good Friday
+            easter_sunday + pd.Timedelta(days=1),   # Easter Monday
+            mondays_may[-1],                        # Journée nationale des patriotes (Monday before 25 May)
+            pd.Timestamp(f"{year}-06-24"),          # Fête nationale
+            pd.Timestamp(f"{year}-07-01"),          # Canada Day
+            mondays_sep[0],                         # Labour Day (first Monday of September)
+            mondays_oct[1],                         # Thanksgiving (second Monday of October)
+            pd.Timestamp(f"{year}-12-25"),          # Christmas Day
+        ]
+    return pd.DatetimeIndex(days)
 
 
 def style_axes(ax, title: str, ylabel: str = "") -> None:

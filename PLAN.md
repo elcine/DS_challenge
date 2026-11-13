@@ -164,7 +164,7 @@ Based on the step 2 findings (notebook section 4). No new analysis.
 | Stakeholder | What they want | What this data can support | What it cannot support | Data that would close the gap |
 |---|---|---|---|---|
 | **VP Operations** | Earlier escalation, less disruption | Ranking a new train incident by its risk of becoming long, from fields recorded at the start (symptom, time, location, whether a train run is attached). How often incidents become long, by symptom and place. | When the strongest signals (evacuation, emergency team, power cut, damage) become known, so whether they can be used early. Exact durations: only eight bins, the top one open-ended. Whether escalating earlier would shorten an incident, since durations reflect today's response. | A timestamp for each operational indicator and response action. Duration in minutes. A record of what was done and when. |
-| **CFO** | Prioritisation, confidence, measurable financial burden | Where incidents of 5 minutes or more concentrate (line, location, symptom). Incidents per million planned km by line for 2019 to September 2023. Confidence: calibrated probabilities from a model, and uncertainty ranges around rates and model results. | Any cost figure. Riders affected. Minutes of delay beyond 30. Rates per km after September 2023. | Ridership by line and time of day. Duration in minutes. A cost per incident or per delay-minute. Km actually run, up to date. |
+| **CFO** | Prioritisation, confidence, measurable financial burden | Where incidents of 5 minutes or more concentrate (line, location, symptom). Incidents per million planned km by line for 2019 to September 2023. Confidence: calibrated probabilities from a model (checked in step 6: predicted and observed rates agree, but the model is rarely confident, with only 9 of 3,004 holdout incidents scored above 20%), and uncertainty ranges around rates and model results. | Any cost figure. Riders affected. Minutes of delay beyond 30. Rates per km after September 2023. | Ridership by line and time of day. Duration in minutes. A cost per incident or per delay-minute. Km actually run, up to date. |
 | **Public Affairs / Safety** | Clarity on user impact, communication risk, rare severe events | Counts of the rarest events: 524 train incidents of 30 minutes or more (54 to 102 per year), evacuations, fire and smoke symptoms, including in stations. | People affected or injured. Severity of station incidents, which all sit in the lowest duration bin. Whether an incident was a full stop or a slowdown, and which segment of the line was affected. Anything about communications. With so few severe events, any rate or model for them is imprecise. | Passengers affected per incident. Impact type (full stop or slowdown) and the segment affected. A severity or injury field. Duration of station incidents. Complaints and communication logs. |
 | **Trend reliability** (all three) | To know whether trends reflect reliability, service volume, reporting or classification | For incidents of 5 minutes or more, the counts follow the STM's published indicator month by month, so their trend can be trusted. Service volume explains little of the change in counts. | Trends in incidents under 5 minutes: the 2025 drop, the drift in symptom and indicator coding, and the 2024 episode where the recorded symptom was wrong cannot be separated from logging practice. Rates per rider. | Documented changes to logging rules and code lists, with dates. Km actually run and ridership. A stable symptom coding, or a mapping between versions. |
 
@@ -366,6 +366,8 @@ done in the time available)".
     the lower edge of the bin for closed bins, and for "30 min et plus" the
     median elapsed time of those incidents (end minus start, about 49
     minutes) instead of 30. The assumption is stated with the table.
+  - a table of major incidents per million planned km, by line and year
+    (2019 to September 2023), next to raw counts;
   - one table comparing interchange stations (Berri-UQAM, Lionel-Groulx,
     Snowdon, Jean-Talon, from a fixed list, not from the line field) and
     terminal stations against the other locations: share of major incidents
@@ -384,7 +386,7 @@ done in the time available)".
 - Calibration of the predicted probabilities. If it is poor, the "calibrated
   probabilities" cell in the stakeholder table is softened.
 
-**Decision needed.** Model choice. Recorded in the Decision log.
+**Decision needed.** Model choice. Decided: see D6 in the Decision log.
 
 ### Step 7: Recommendations and README (~25 min)
 
@@ -394,6 +396,13 @@ groups, and a README that reviewers can read on its own.
 **What I'll do.**
 - Write recommendations on measuring reliability, prioritising action and
   improving data collection, stating clearly what the data cannot answer.
+- Frame the model choice for the VP Operations as depending on the STM's
+  escalation budget (decision D8): logistic regression matches gradient
+  boosting at 10%, is steadier across years and can be explained to
+  operators; gradient boosting catches about 16% more major incidents at a
+  tight 5% budget (137 against 118 over four folds), so piloting it would be
+  worth it if capacity is that limited. Include the small table of major
+  incidents caught at 5% and 10% for both models.
 - Bring station incidents back in one paragraph for Public Affairs / Safety:
   they are left out of the exploration plots, but fire and smoke incidents in
   stations matter for user impact and communication risk. Supported by a
@@ -458,7 +467,8 @@ Evidence: notebook section 5.
 - **Population options.**
   1. Train incidents only (29,167 rows).
   2. All incidents (45,561 rows).
-- **Population choice.** Train incidents only.
+- **Population choice.** Train incidents only. (Later narrowed by D7: the
+  280 train incidents with no single place are also left out.)
 - **Reason.** All 16,394 station incidents are in the lowest duration bin, so
   they can never be positive. Including them would only dilute the rate and
   flatter any model.
@@ -541,6 +551,12 @@ Evidence: notebook section 6. Implemented in `src/features.py`.
   upper bound) are compared explicitly. Permutation importance and a
   single-field ablation would add to this; they are listed as further
   analysis (D5).
+- **Planned km as a feature: tested and not kept.** Planned km for the
+  incident's line and day measures exposure, not severity. Added to the
+  headline logistic regression, it leaves pooled PR-AUC unchanged (0.1085
+  without, 0.1084 with; folds 2021 to 2023, the period with km data). A
+  statutory-holiday flag was also checked descriptively: 3.2% of incidents
+  on holidays are major (plus or minus 1.5) against 3.6% on other days.
 - **Reason.** Option 2 is what an operator plausibly has when an incident
   starts. Options 1 and 3 bracket it: one shows what is lost by trusting only
   documented fields, the other what could be gained if response actions were
@@ -634,3 +650,114 @@ Evidence: notebook section 7. Fold construction in `src/validation.py`.
   ablation or permutation importance "in step 6", read it as "listed as
   further analysis". The exception is the mismatch sensitivity run in D1,
   which stays in step 6.
+
+### D6. Models and final-model rule (step 6)
+
+Implemented in `src/model.py`. Results: notebook section 8.
+
+- **Options considered.**
+
+| Model | Options | Choice |
+|---|---|---|
+| Logistic regression: encoding | One-hot for all fields, or time fields as numbers | One-hot for all, including hour (risk is not linear in the hour) |
+| Logistic regression: regularisation | L2 with a fixed strength, or strength chosen on the folds | L2, strength chosen among 0.1, 1 and 10 on pooled-fold PR-AUC |
+| Gradient boosting: implementation | scikit-learn `HistGradientBoostingClassifier`, `GradientBoostingClassifier`, XGBoost or LightGBM | `HistGradientBoostingClassifier`: already installed, handles categories, no extra dependency |
+| Gradient boosting: settings | Defaults, fixed conservative settings, or a tuning grid | Fixed conservative settings, no grid: a few hundred positives per training fold would mostly reward noise |
+| Class weights (both) | None, or balanced | None: balanced weights inflate predicted probabilities and break calibration |
+| Post-hoc calibration | Isotonic or Platt scaling, or none | None, unless calibration turns out poor |
+| Not proposed | Random forest, single decision tree | No expected advantage over boosting; a single tree is unstable at a 4% rate |
+
+- **Which model on which feature set** (set with D5). Gradient boosting on
+  the headline set only; logistic regression on the strict, headline and
+  upper-bound sets.
+- **Final-model rule, fixed before seeing results.** Logistic regression is
+  the final model unless gradient boosting's pooled PR-AUC is clearly higher:
+  more than about 0.01 higher and ahead in most folds.
+- **Reason.** Logistic regression coefficients are easier to explain and
+  defend, so the more complex model has to earn its place.
+
+### D7. Incidents with no single place removed from the modelling population (step 6)
+
+Evidence: notebook section 8.1.
+
+- **How the issue was found.** In the first run, on all train incidents, the
+  gradient boosting model scored far higher on the 2025 holdout (PR-AUC
+  0.287) than on the folds (0.168). All 17 holdout incidents scored above 0.5
+  had a location code that is only a line or a list of lines, combined with a
+  fire or smoke symptom. With those rows removed from the test data, the
+  holdout PR-AUC fell to 0.117 and the folds to 0.134.
+- **Is it leakage? It cannot be settled with the data.**
+  - *For:* the code names no place, and 26.8% of these incidents are major
+    against 3.6% of the others, which suggests the code is updated as an
+    incident spreads.
+  - *Against:* some incidents may affect a whole line from the first minute
+    (a power or signalling problem, for example), in which case the code is
+    legitimate start-time information.
+- **Options.**
+  1. Keep the model and report results with and without those rows in the
+     test data.
+  2. Remove the 280 rows from the modelling population (training and test)
+     and re-run the final-model rule.
+  3. Leave the first-run result as the headline, with a caveat.
+- **Choice.** Option 2, with the option 1 comparison kept in the notebook.
+- **Reason.** It is the cautious choice. Both results are reported. If the
+  STM confirms that the code is recorded at the start, the higher result
+  applies to those incidents.
+- **Consequences.**
+  - Modelling population: 28,887 train incidents, 1,028 major (3.6%). Pooled
+    fold positives: 652 (was 693). Holdout positives: 99 (was 121).
+  - Coverage: 6.8% of major incidents (75 of 1,103) are outside the model's
+    scope. In use, incidents logged without a specific place need a separate
+    rule, for example escalating fire or smoke by default.
+  - The 2025 holdout is no longer untouched: this decision was triggered by
+    holdout results. It lowers the reported score and the final-model rule
+    was re-run on the folds only, but the 2025 figures are a little less
+    independent than planned.
+  - Data-collection recommendation: a timestamp for when the location is
+    recorded or updated.
+  - The residual leak accepted in D3 no longer applies to the headline
+    model, so the residual-leak check listed in D5 as further analysis is
+    superseded by this decision.
+- **Outcome of the final-model rule on the reduced population (D6).**
+  Gradient boosting: pooled PR-AUC 0.131 against 0.108 for logistic
+  regression, ahead in 3 of 4 folds. The rule points to gradient boosting;
+  D8 overrides it and makes logistic regression the final model.
+
+### D8. Logistic regression as the final model, overriding the D6 rule (step 6)
+
+Evidence: notebook section 8.3 (per-fold table).
+
+- **Options.**
+  1. Follow the pre-set rule of D6: gradient boosting.
+  2. Override it: logistic regression.
+- **What the folds show** (reduced population, test years 2021 to 2024).
+
+| Test year | Majors | PR-AUC LR | PR-AUC GBM | GBM minus LR | Caught at 5%: LR / GBM | Caught at 10%: LR / GBM |
+|---|---|---|---|---|---|---|
+| 2021 | 138 | 0.115 | 0.109 | -0.006 | 21 / 26 | 43 / 44 |
+| 2022 | 157 | 0.118 | 0.153 | +0.035 | 32 / 38 | 63 / 61 |
+| 2023 | 162 | 0.099 | 0.137 | +0.039 | 31 / 29 | 51 / 45 |
+| 2024 | 195 | 0.118 | 0.140 | +0.021 | 34 / 44 | 60 / 65 |
+| All folds | 652 | 0.108 | 0.131 | +0.023 | 118 / 137 | 217 / 215 |
+
+- **Choice.** Option 2: logistic regression on the headline set is the final
+  model. This overrides D6.
+- **Reason.** The pre-set rule pointed to gradient boosting by a thin margin
+  (+0.023 pooled PR-AUC, ahead in 3 of 4 folds). On closer inspection the
+  difference is not robust: at a 10% alert budget the two models catch
+  almost the same number of major incidents on the folds (217 and 215, each
+  ahead in two folds). Logistic regression is preferred for
+  interpretability.
+- **What this costs, stated openly.**
+  - It lowers the headline holdout PR-AUC: 0.096 for logistic regression
+    against 0.122 for gradient boosting.
+  - Gradient boosting is better at the 5% alert budget: 137 against 118
+    major incidents caught on the folds (ahead in 3 of 4), 21 against 16 on
+    the holdout.
+  - A rule fixed in advance was overridden after results were seen. The
+    override goes towards the simpler and lower-scoring model.
+- **Basis.** The choice rests on the folds. The holdout is consistent with
+  it (difference in PR-AUC: 95% interval -0.005 to 0.067; 32 and 31 major
+  incidents caught at 10%) but was not used to make it.
+- **Reporting.** Gradient boosting results stay reported alongside the final
+  model in every table.
