@@ -144,7 +144,8 @@ fixed and nothing silently dropped.
 - Annual km per line before and after removing the zero-km rows (expected: identical).
 - A list of every row flagged as suspicious, with the reason.
 
-**Decision needed.** How to treat the flagged rows: keep as is, correct, or exclude.
+**Decision needed.** How to treat the flagged rows: keep as is, correct, or
+exclude. Decided: see D1 in the Decision log.
 
 ### Step 2: Exploratory analysis (~45 min)
 
@@ -172,6 +173,10 @@ left out or noted as a possible follow-up.
   - Data quality of candidate predictors: missingness and category shares by year.
   - Time and location: duration by hour of service day, day of week and location,
     in one compact view each.
+- Hypothesis to check: some time/bin mismatches are closure periods logged as
+  incidents. The all-day Saint-Michel entries in October 2024 coincide with
+  that station's closure in fall 2024. Check where and when the all-day
+  entries cluster; treat the link as a hypothesis, not a fact.
 
 **Checks I'll show.**
 - A verification table with one row per initial observation: the observation,
@@ -250,6 +255,8 @@ Decision log.
   and features.
 - After the decision: implement `src/model.py` and `src/evaluate.py`, fit, and
   evaluate against the baselines.
+- One sensitivity run that excludes the 525 train incidents whose elapsed time
+  disagrees with their duration bin (decision D1), compared with the main run.
 
 **Checks I'll show.**
 - Metrics per fold and on the final holdout, with uncertainty.
@@ -303,4 +310,22 @@ groups, and a README that reviewers can read on its own.
 
 Each entry records the options considered, the choice made and the reason.
 
-_No decisions recorded yet._
+### D1. Treatment of flagged rows (step 1)
+
+Step 1 flagged 584 of 45,561 incident rows without changing them: 1 corrupted
+line value (`02-avr`), 525 train incidents whose end minus start time falls
+outside their duration bin, and 60 rows whose calendar date and start time
+disagree.
+
+- **Options.**
+  1. Keep all flagged rows and correct none.
+  2. Exclude the 525 time/bin mismatches from modelling.
+  3. Correct values by inference (for example, guess the original line behind `02-avr`).
+- **Choice.** Option 1. Keep all flagged rows, trust the duration bin over the
+  elapsed time, and treat the `02-avr` line as unknown.
+- **Reason.** The duration bin is the published measure of service delay.
+  Excluding rows would rely on a rule that cannot be verified, and guessing
+  values would be invention. The date/time disagreement only matters if hour
+  of day becomes a feature, so it is revisited in step 4.
+- **Follow-up.** Step 6 includes one sensitivity run that excludes the 525
+  time/bin mismatches, to show whether the choice changes the results.

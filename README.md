@@ -94,7 +94,13 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-_Commands to rebuild the processed data and run the notebook: to be completed._
+Rebuild the cleaned tables in `data/processed/` from the raw files:
+
+```bash
+python -m src.data
+```
+
+_Command to run the notebook: to be completed._
 
 ## Use of AI
 
