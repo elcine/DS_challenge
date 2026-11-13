@@ -1,0 +1,9 @@
+# Direct dependencies only, pinned to the versions used for the analysis.
+# Tested with Python 3.13.
+pandas==3.1.1
+numpy==2.5.4
+pyarrow==26.0.1        # Parquet read/write for data/processed/
+matplotlib==3.11.2
+scikit-learn==1.9.1
+ipykernel==7.4.0       # runs the notebook
+nbconvert==7.17.2      # re-executes the notebook from the command line

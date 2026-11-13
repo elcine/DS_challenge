@@ -2,4 +2,6 @@
 __pycache__/
 .ipynb_checkpoints/
 .venv/
+.venv.nosync/
 brief/*.docx
+.vscode/
