@@ -265,6 +265,10 @@ groups, and a README that reviewers can read on its own.
 **What I'll do.**
 - Write recommendations on measuring reliability, prioritising action and
   improving data collection, stating clearly what the data cannot answer.
+- Bring station incidents back in one paragraph for Public Affairs / Safety:
+  they are left out of the exploration plots, but fire and smoke incidents in
+  stations matter for user impact and communication risk. Supported by a
+  simple count by symptom and year.
 - Complete the README: summary, data, limitations, approach, results,
   recommendations, repo layout and how to run, note on AI use.
 
