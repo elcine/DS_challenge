@@ -120,10 +120,41 @@ that cannot be verified, and guessing values would be invention.
   incidents are assigned their first listed line, and line lists are removed
   from location codes, so the model cannot learn "the incident spread"
   through the back door.
+- **No automated feature selection.** Features were chosen by whether they
+  are available when an incident starts. The main risk here is leakage, and
+  no selection algorithm can detect it: it would pick the evacuation flag
+  first. The set is small (7 to 10 fields), and a statistical search on a few
+  hundred positives would risk fitting noise and would have to be repeated
+  inside every training fold. Instead, regularised logistic regression
+  shrinks weak features, permutation importance on the validation folds
+  checks each feature's contribution, and planned ablations compare feature
+  sets explicitly.
 - **Associations, not causes.** Feature effects describe which incidents
   tend to be long, not what makes them long.
 
 [Options considered: D3](PLAN.md#d3-feature-sets-step-4).
+
+### Validation and metrics: train on the past, test on what comes next (D4)
+
+- **Model comparison.** Four yearly folds (test years 2021 to 2024), each
+  trained on all earlier years. Results are shown per fold and pooled: the
+  pooled test folds hold 693 major incidents, against 121 to 222 in any
+  single year. No random splits.
+- **Final holdout.** 2025 (January to September, 121 major incidents),
+  scored once by a model trained on 2019 to 2024, and never used to choose
+  between models. It is the most recent period, and for incidents of 5
+  minutes or more its counts match the STM's published rate.
+- **Metrics.** PR-AUC as the primary metric, read against the base rate of
+  about 4%. For operations: how many major incidents fall among the 5% and
+  10% highest-scored incidents. For confidence: calibration (Brier score
+  against a constant-rate baseline, and predicted against observed rates).
+  ROC-AUC as a familiar secondary reference.
+- **Baselines and uncertainty.** Two baselines a model must beat: a constant
+  rate, and a symptom-only rate table (the rule of thumb available without a
+  model). Intervals on the holdout come from a bootstrap that resamples
+  whole service days, because incidents on the same day are not independent.
+
+[Options considered: D4](PLAN.md#d4-validation-scheme-metrics-and-baselines-step-5).
 
 ## Results
 
@@ -146,6 +177,7 @@ src/              reusable Python modules
   eda.py            summaries used in the exploration
   verify.py         checks of the first-look observations
   features.py       targets and feature sets (decisions D2 and D3)
+  validation.py     yearly train/test folds (decision D4)
 PLAN.md           work plan and decision log
 requirements.txt  pinned dependencies
 ```

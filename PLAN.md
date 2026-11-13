@@ -327,8 +327,8 @@ unknown timing. Decided: see D3 in the Decision log.
 - Fold boundaries, rows and positives per fold.
 - Confirmation that no test period overlaps or precedes its training period.
 
-**Decision needed.** Validation scheme, metrics and baselines. Recorded in the
-Decision log.
+**Decision needed.** Validation scheme, metrics and baselines. Decided: see D4
+in the Decision log.
 
 ### Step 6: Modelling and driver analysis (~55 min)
 
@@ -350,14 +350,29 @@ Decision log.
 - One ablation run: the headline set without "train run attached", to show
   how much of the gain over the strict set comes from that field alone.
 - Performance per fold, because the symptom's relation to the target drifts.
+- Model budget, to keep the step manageable: gradient boosting is run on the
+  headline set only; logistic regression is used for the strict set, the
+  upper bound, the ablation and the sensitivity runs.
+- Permutation importance on the validation folds for the headline model, to
+  check each feature's contribution (decision D3: no automated feature
+  selection).
+- One check on the residual leak accepted in D3: headline model test
+  performance with the 280 line-list-location rows excluded, to show that
+  they do not drive the results.
 - **Driver analysis** (about 10 to 15 minutes, after the models). Looking
   back at historical incidents, break down major incidents (15 minutes or
   more) by primary cause, secondary cause, line and location:
   - each cause's share of all major incidents;
   - its rate of becoming major;
-  - a ranking by number of major incidents and by delay minutes. The data has
-    no exact minutes, so delay minutes are a minimum, taken from the lower
-    edge of each duration bin.
+  - a ranking by number of major incidents first, and by delay minutes
+    second. The data has no exact minutes, so delay minutes are an estimate:
+    the lower edge of the bin for closed bins, and for "30 min et plus" the
+    median elapsed time of those incidents (end minus start, about 49
+    minutes) instead of 30. The assumption is stated with the table.
+  - one table comparing interchange stations (Berri-UQAM, Lionel-Groulx,
+    Snowdon, Jean-Talon, from a fixed list, not from the line field) and
+    terminal stations against the other locations: share of major incidents
+    and rate of becoming major. This is description only, not a model feature.
 
   Post-analysis causes are legitimate here because the aim is to explain past
   incidents, not to predict new ones. That distinction is stated explicitly
@@ -475,8 +490,8 @@ Evidence: notebook section 5.
   single-year margins suggest, because model comparison pools the
   rolling-origin folds for 2021 to 2024 (693 positives at 15 minutes or
   more), and 2025 stays out as the one-time final holdout.
-- **Open point for step 5.** The validation scheme is still to be confirmed
-  in step 5. The pooled count depends on it: 693 positives over 2021 to 2024
+- **Open point for step 5 (now closed by D4).** The validation scheme was
+  still to be confirmed in step 5. The pooled count depends on it: 693 positives over 2021 to 2024
   with 2025 held out, or 814 if 2025 were included in the folds.
 
 ### D3. Feature sets (step 4)
@@ -516,6 +531,16 @@ Evidence: notebook section 6. Implemented in `src/features.py`.
     own value; the rest are grouped as "other". The grouping is learned on
     training data only.
   - Hour is used as recorded.
+- **No automated feature selection.** Features were chosen by whether they
+  are available when an incident starts, because the main risk here is
+  leakage, which no selection algorithm can detect: it would pick the
+  evacuation flag first. The set is small (7 to 10 fields). A statistical
+  search on a few hundred positives per training fold (289 to 760) would risk
+  fitting noise, and would have to be repeated inside each training fold to
+  avoid leaking test information. Instead: regularised logistic regression
+  shrinks weak features, permutation importance on the validation folds
+  checks each feature's contribution, and the planned ablations compare
+  feature sets explicitly.
 - **Reason.** Option 2 is what an operator plausibly has when an incident
   starts. Options 1 and 3 bracket it: one shows what is lost by trusting only
   documented fields, the other what could be gained if response actions were
@@ -529,6 +554,53 @@ Evidence: notebook section 6. Implemented in `src/features.py`.
   - The symptom's relation to the target drifts (fire or smoke: 8% in 2019,
     26% in 2025), so performance is shown per fold.
   - Feature effects are associations, not causes.
-  - Residual leak to be aware of: line-list location codes (280 rows, 26.8%
-    positive) sit inside the "other" location group (4,574 rows, 8.2%
-    positive when the grouping is learned on 2019 to 2023).
+  - Residual leak, accepted and documented: line-list location codes (280
+    rows, 26.8% positive) sit inside the "other" location group (4,574 rows,
+    8.2% positive when the grouping is learned on 2019 to 2023). Step 6
+    checks the headline model with those 280 rows excluded.
+
+### D4. Validation scheme, metrics and baselines (step 5)
+
+Evidence: notebook section 7. Fold construction in `src/validation.py`.
+
+- **Validation options.**
+
+| Scheme | Description | Main argument for | Main argument against |
+|---|---|---|---|
+| 1. Expanding window | Test on 2021, 2022, 2023, 2024; train each time on all earlier years | Most training data; 693 pooled test positives; performance visible per year | Early years (pre-COVID, older coding) stay in training |
+| 2. Sliding window | Same test years; train on the previous 3 years only | Forgets old reporting practice | About 40% fewer training positives in later folds; window length is one more choice |
+| 3. Single split | Train 2019 to 2023, test 2024 | Simplest | One year (222 positives) decides the model |
+
+- **Validation choice.** Scheme 1, with per-fold results shown, for model
+  comparison. Scheme 2 only as a sensitivity run if per-fold results show
+  older data hurting.
+- **Holdout.** 2025 (January to September): 3,046 train incidents, 121
+  positives at 15 minutes or more, 54 at 30 minutes or more. The final model
+  is trained on 2019 to 2024. The holdout is used once and never to choose
+  between models.
+- **Reasons for the holdout.**
+  - It is the most recent data and the closest to deployment.
+  - Incidents of 5 minutes or more match the STM's published rate, so the
+    year looks complete for them.
+  - Strike days account for only about 30 incidents.
+  - The missing km for 2025 does not matter here: km is not a model feature
+    (it measures exposure, not severity), and the rate analysis stops at
+    September 2023.
+- **Metrics.**
+  - **Primary: PR-AUC** (average precision), read against the base rate of
+    about 4%.
+  - **Operational:** recall and precision among the 5% and the 10%
+    highest-scored incidents (two alert budgets).
+  - **Calibration:** Brier score against the constant-rate baseline, plus
+    predicted versus observed rate by score band.
+  - **Secondary:** ROC-AUC.
+- **Baselines.** Both: a constant rate (the training base rate for every
+  incident), and a symptom-only rate table (each incident gets the training
+  rate of its symptom).
+- **Uncertainty.** Bootstrap on the holdout, resampling whole service days,
+  1,000 resamples. Days are resampled, not incidents, because incidents on
+  the same day are not independent (272 holdout days, 22 of them with two or
+  more major incidents).
+- **Reason.** Pooling four yearly folds gives 693 test positives for model
+  comparison, against 121 to 222 for any single year, while keeping the most
+  recent year untouched for one final, honest estimate.
