@@ -22,8 +22,11 @@ each one is recorded in the [Decision log](#decision-log).
 ## Initial observations (to verify in exploration)
 
 First read-only look at the two raw files and their data dictionaries. These
-are provisional: nothing here is a decision or a confirmed finding. Each
-observation is re-checked in step 2, where it is either confirmed or corrected.
+were provisional when written. Step 2 re-checked each one (notebook section 1,
+code in `src/verify.py`): 23 confirmed, 5 corrected, 5 taken from the
+dictionary and not testable with the data. Corrections are marked
+**Corrected** in place, and summarised under
+[Verification results](#verification-results-step-2).
 
 ### File formats
 
@@ -34,9 +37,12 @@ observation is re-checked in step 2, where it is either confirmed or corrected.
   - one `Ligne` value reads `02-avr` (a list of lines converted to a date);
   - `Année civile/mois` is stored as `janv-19`, `févr-19`, etc.
 - Incident times follow the service day, not the clock: hours run from 02:00 to
-  27:41, in mixed `HH:MM` and `HH:MM:SS` formats. `Jour calendaire` is the real
+  27:41, in mixed `HH:MM` and `HH:MM:SS` formats. **Corrected:** end times run
+  to 29:30; the first look only covered train incidents. `Jour calendaire` is the real
   calendar date, while `Jour du mois` and `Année civile` follow the service day
   (an incident at 24:00 on service day 1 August has `Jour calendaire` 2 August).
+  **Corrected:** this holds for every start time of 24:00 or later, but 60
+  incidents starting at exactly `02:00` also carry the next calendar date.
 - Dictionary and file do not match exactly: `Incident en minutes` is in the file
   but not in the dictionary; `Date du jour (Alpha)` is in the dictionary but not
   in the file.
@@ -47,7 +53,10 @@ observation is re-checked in step 2, where it is either confirmed or corrected.
 - Planned km: 2019-01-01 to 2023-09-30 only. There is no service-volume
   denominator for the last two years of incidents.
 - Planned km, 2019: every line/day appears twice, once with real km and once as
-  a zero-km `Non affecté` row. `Tournée` is always `001`.
+  a zero-km `Non affecté` row. `Tournée` is always `001`. **Corrected:**
+  zero-km duplicates also exist in 2020 (76 rows), and for 868 line/days the
+  km sits on the `Non affecté` row while the row with a service period is zero.
+  Duplicates are identified by km = 0.
 - The dictionary states that train incidents can appear more than 30 days late
   because cause analysis takes time, so the most recent months may be incomplete.
 
@@ -82,7 +91,8 @@ observation is re-checked in step 2, where it is either confirmed or corrected.
 - `Symptome` is described as the cause attributed at the time of the incident.
 - `Cause primaire` and `Cause secondaire` are determined by analysis after the incident.
 - `Type de matériel` appears to be derived from `Cause secondaire` (2,915 rows
-  with `73` and 2,915 rows with `MR-73`).
+  with `73` and 2,915 rows with `MR-73`). **Corrected:** the two agree in all
+  but 4 rows (`10` without `MPM-10`).
 - `CAT`, `Urgence métro`, `Évacuation` and `Dommage matériel` have no documented
   timing. They are strongly associated with long incidents, which could mean
   they are early signals or consequences of a long incident.
@@ -97,6 +107,21 @@ observation is re-checked in step 2, where it is either confirmed or corrected.
   `Porte de voiture` and `Évacuation`.
 - `Code de lieu` has 230 distinct values, mixing stations, technical locations
   and line lists.
+
+### Verification results (step 2)
+
+- **Status:** 23 confirmed, 5 corrected, 5 from the dictionary only.
+- **Corrected:** latest time (29:30), calendar date against start time (60
+  rows at `02:00`), zero-km rows in 2020, zero-km rows that have a service
+  period (868), rolling stock type against secondary cause (4 rows differ).
+- **New observations from the exploration** (details and tags in notebook
+  section 4):
+  - April to September 2025 has 34% fewer train incidents than the same months of 2024.
+  - Planned km per day on the yellow line are about a third higher in 2023 than in 2022.
+  - Classification drifts over time: symptom mix, door indicator, and the
+    share of train incidents without a run number.
+  - Six all-day entries at St-Michel in October 2024 fit a closure logged as
+    an incident; most time/bin mismatches do not fit that pattern.
 
 ## Steps
 

@@ -82,6 +82,9 @@ data/raw/         original files, read-only
 data/processed/   cleaned tables written by the code (committed, rebuilt from raw)
 notebooks/        one narrative notebook
 src/              reusable Python modules
+  data.py           load and clean the raw files
+  eda.py            summaries used in the exploration
+  verify.py         checks of the first-look observations
 PLAN.md           work plan and decision log
 requirements.txt  pinned dependencies
 ```
@@ -100,7 +103,12 @@ Rebuild the cleaned tables in `data/processed/` from the raw files:
 python -m src.data
 ```
 
-_Command to run the notebook: to be completed._
+Re-run the notebook from the command line (or open
+`notebooks/analysis.ipynb` in an editor and run all cells):
+
+```bash
+jupyter nbconvert --to notebook --execute --inplace notebooks/analysis.ipynb
+```
 
 ## Use of AI
 
