@@ -123,13 +123,21 @@ dictionary and not testable with the data. Corrections are marked
   - Six all-day entries at St-Michel in October 2024 fit a closure logged as
     an incident; most time/bin mismatches do not fit that pattern.
 - **Analyst observations** (notebook section 2.6), added after step 2:
-  - The 2025 maintenance strikes lower incident counts on the June strike
-    days but explain only about 30 of the 850 incidents missing in April to
-    September 2025 against 2024.
+  - The 2025 maintenance strikes (official strike days from the STM's
+    indicators report) lower incident counts on the June strike days but
+    explain only about 30 of the 850 incidents missing in April to September
+    2025 against 2024.
   - The August to September 2024 spike is 350 rolling-stock symptoms later
-    traced to track (`Service de la voie`) at terminal stations.
+    traced to track (`Service de la voie`) at terminal stations. Incidents of
+    5 minutes or more spike in September 2024 only.
   - Incidents of 5 minutes or more per million planned km: 9 to 13 for 2019
-    to 2023, the same order of magnitude as the STM's published 13 for 2024.
+    to 2023. The 2023 value (13.2, January to September) equals the STM's
+    published 13.2 for 2023.
+  - Month by month, the count of incidents of 5 minutes or more follows the
+    STM's published monthly rate for 2024 and 2025 (correlation 0.995 and
+    0.977), including the September 2024 peak and the 2025 decline. Up to
+    September 2025 the dataset is consistent with being complete for
+    incidents of 5 minutes or more.
   - 216 train incidents (0.74%) share a date, line and start minute with
     another incident; 12 are exact duplicates.
   - A 15-minute threshold was added to the duration summaries for step 3.

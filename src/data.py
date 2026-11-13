@@ -23,6 +23,8 @@ import pandas as pd
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = REPO_ROOT / "data" / "raw"
 PROCESSED_DIR = REPO_ROOT / "data" / "processed"
+# Small reference files from outside the two raw datasets (sources noted in each file).
+EXTERNAL_DIR = REPO_ROOT / "data" / "external"
 
 # The raw file names contain accented letters. macOS and Linux can encode
 # those differently, so the files are found by pattern instead of exact name.

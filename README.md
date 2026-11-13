@@ -80,6 +80,7 @@ _To be completed._
 brief/            data dictionaries (saved portal pages, in French)
 data/raw/         original files, read-only
 data/processed/   cleaned tables written by the code (committed, rebuilt from raw)
+data/external/    small reference values from STM publications (source noted in each file)
 notebooks/        one narrative notebook
 src/              reusable Python modules
   data.py           load and clean the raw files

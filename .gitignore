@@ -5,3 +5,4 @@ __pycache__/
 .venv.nosync/
 brief/*.docx
 .vscode/
+brief/principaux_indicateurs*.pdf
