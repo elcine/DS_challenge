@@ -181,7 +181,8 @@ Based on the step 2 findings (notebook section 4). No new analysis.
 
 ## Steps
 
-Time estimates are rough and add up to about 3 hours (180 minutes).
+Time estimates are rough. The original budget was 3 hours (180 minutes); the
+driver analysis and extra runs added to step 6 bring the total to about 200.
 
 ### Step 0: Setup (~10 min)
 
@@ -307,7 +308,7 @@ incident starts, with leakage reasoning for every field.
 - Feature matrix shape and missing-value counts.
 
 **Decision needed.** Feature set, including the treatment of fields with
-unknown timing. Recorded in the Decision log.
+unknown timing. Decided: see D3 in the Decision log.
 
 ### Step 5: Validation and metrics decision (~10 min)
 
@@ -329,7 +330,7 @@ unknown timing. Recorded in the Decision log.
 **Decision needed.** Validation scheme, metrics and baselines. Recorded in the
 Decision log.
 
-### Step 6: Modelling (~35 min)
+### Step 6: Modelling and driver analysis (~55 min)
 
 **Goal.** A predictive framework evaluated honestly under the agreed scheme.
 
@@ -343,6 +344,25 @@ Decision log.
 - The same model scores evaluated against the secondary target, 30 minutes or
   more (decision D2).
 - One sensitivity run with the target set at 10 minutes or more (decision D2).
+- Feature sets (decision D3): the headline set, the strict set as a lower
+  bound, and the response-indicator set as an upper bound labelled "if these
+  indicators were known in the first minutes".
+- One ablation run: the headline set without "train run attached", to show
+  how much of the gain over the strict set comes from that field alone.
+- Performance per fold, because the symptom's relation to the target drifts.
+- **Driver analysis** (about 10 to 15 minutes, after the models). Looking
+  back at historical incidents, break down major incidents (15 minutes or
+  more) by primary cause, secondary cause, line and location:
+  - each cause's share of all major incidents;
+  - its rate of becoming major;
+  - a ranking by number of major incidents and by delay minutes. The data has
+    no exact minutes, so delay minutes are a minimum, taken from the lower
+    edge of each duration bin.
+
+  Post-analysis causes are legitimate here because the aim is to explain past
+  incidents, not to predict new ones. That distinction is stated explicitly
+  in the notebook and the README. Results are labelled as associations, with
+  a note that cause coding can drift (the 2024 episode).
 
 **Checks I'll show.**
 - Metrics per fold and on the final holdout, with uncertainty.
@@ -458,3 +478,57 @@ Evidence: notebook section 5.
 - **Open point for step 5.** The validation scheme is still to be confirmed
   in step 5. The pooled count depends on it: 693 positives over 2021 to 2024
   with 2025 held out, or 814 if 2025 were included in the folds.
+
+### D3. Feature sets (step 4)
+
+Evidence: notebook section 6. Implemented in `src/features.py`.
+
+- **Options.**
+
+| Option | Fields | Main argument for | Main argument against |
+|---|---|---|---|
+| 1. Strict | Symptom, line, location (grouped, plus a between-stations flag), hour, weekday, month | Every field is documented or inherent at the start | Weakest; drops cheap and strong first-report fields |
+| 2. Strict + first-report fields | Option 1 + train run attached, door involved, emergency brake, vehicle recorded | These describe the triggering event and are plausibly known at once | Their timing is a reading of the fields, not documented |
+| 3. Option 2 + response indicators | Option 2 + traction power cut, emergency team, evacuation, material damage, several lines | Far stronger | Mostly consequences of a long incident; evacuation of train and station is 95.6% positive |
+
+- **Choice.**
+  - **Headline: option 2**, without "vehicle recorded" (weak, lift 0.86, and
+    unclear timing).
+  - **Lower bound: option 1**, reported beside the headline.
+  - **Upper bound: option 3**, reported only as "if these indicators were
+    known in the first minutes". It is not a usable model. Its gap over
+    option 2 shows the value of timestamping response actions, which is a
+    data-collection recommendation.
+  - **No history features.** The number of incidents on the same line in the
+    previous 60 minutes shows no relation to the target, and such features
+    add leakage risk.
+  - **No year feature.** It would encode reporting drift.
+- **Handling of line and location.**
+  - Multi-line incidents take their first listed line in options 1 and 2. A
+    separate "several lines" value would let the model learn that the
+    incident spread (21.6% positive) through the back door. "Unknown line" is
+    kept only for `Non affecté` and `02-avr`. The "several lines" flag exists
+    in option 3 only.
+  - The same back door exists in the location code, so it is closed the same
+    way: "Berri-UQAM - Ligne 1, 2, 4" becomes "Berri-UQAM", and a code that
+    is only a line or a list of lines names no place and joins "other".
+  - Locations with at least 100 incidents in the training period keep their
+    own value; the rest are grouped as "other". The grouping is learned on
+    training data only.
+  - Hour is used as recorded.
+- **Reason.** Option 2 is what an operator plausibly has when an incident
+  starts. Options 1 and 3 bracket it: one shows what is lost by trusting only
+  documented fields, the other what could be gained if response actions were
+  timestamped.
+- **Notes carried to step 6 and the README.**
+  - "Train run attached" may partly overlap with the outcome (with no train
+    attached, no train delay can be measured), and its recording drifts
+    (14.7% to 23.0% of train incidents without a run). An ablation run,
+    option 2 without this field, shows how much of the gain over option 1
+    comes from it. If most of it does, say so.
+  - The symptom's relation to the target drifts (fire or smoke: 8% in 2019,
+    26% in 2025), so performance is shown per fold.
+  - Feature effects are associations, not causes.
+  - Residual leak to be aware of: line-list location codes (280 rows, 26.8%
+    positive) sit inside the "other" location group (4,574 rows, 8.2%
+    positive when the grouping is learned on 2019 to 2023).

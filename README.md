@@ -100,6 +100,31 @@ that cannot be verified, and guessing values would be invention.
 
 [Options considered: D2](PLAN.md#d2-target-definition-and-modelling-population-step-3).
 
+### Features: what is plausibly known when an incident starts (D3)
+
+- **Headline set.** Fields documented or inherent at the start (symptom,
+  line, location, hour, weekday, month) plus three that describe the
+  triggering event and are plausibly in the first report (train run attached,
+  door involved, emergency brake). The timing of those three is a reading of
+  the fields, not something the data dictionary states.
+- **Two brackets around it.** A strict set with only the documented fields
+  is reported as a lower bound. A set that adds the response indicators
+  (traction power cut, emergency team, evacuation, material damage, several
+  lines) is reported only as an upper bound, "if these indicators were known
+  in the first minutes": they are mostly consequences of a long incident, so
+  that is not a usable model. Its gap over the headline set shows what
+  timestamping response actions would be worth.
+- **Left out on purpose.** Causes and rolling stock type (set by analysis
+  after the incident), end time, year, and features built from past
+  incidents (no relation to the target, and a leakage risk). Multi-line
+  incidents are assigned their first listed line, and line lists are removed
+  from location codes, so the model cannot learn "the incident spread"
+  through the back door.
+- **Associations, not causes.** Feature effects describe which incidents
+  tend to be long, not what makes them long.
+
+[Options considered: D3](PLAN.md#d3-feature-sets-step-4).
+
 ## Results
 
 _To be completed._
@@ -120,6 +145,7 @@ src/              reusable Python modules
   data.py           load and clean the raw files
   eda.py            summaries used in the exploration
   verify.py         checks of the first-look observations
+  features.py       targets and feature sets (decisions D2 and D3)
 PLAN.md           work plan and decision log
 requirements.txt  pinned dependencies
 ```
