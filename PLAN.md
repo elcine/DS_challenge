@@ -154,6 +154,28 @@ Points to state in the README limitations section (step 7). No analysis needed.
   "long under current practice", and acting on its predictions would change
   the data that future versions are trained on.
 
+## Stakeholder needs vs what the data supports
+
+Based on the step 2 findings (notebook section 4). No new analysis.
+
+| Stakeholder | What they want | What this data can support | What it cannot support | Data that would close the gap |
+|---|---|---|---|---|
+| **VP Operations** | Earlier escalation, less disruption | Ranking a new train incident by its risk of becoming long, from fields recorded at the start (symptom, time, location, whether a train run is attached). How often incidents become long, by symptom and place. | When the strongest signals (evacuation, emergency team, power cut, damage) become known, so whether they can be used early. Exact durations: only eight bins, the top one open-ended. Whether escalating earlier would shorten an incident, since durations reflect today's response. | A timestamp for each operational indicator and response action. Duration in minutes. A record of what was done and when. |
+| **CFO** | Prioritisation, confidence, measurable financial burden | Where incidents of 5 minutes or more concentrate (line, location, symptom). Incidents per million planned km by line for 2019 to September 2023. Confidence: calibrated probabilities from a model, and uncertainty ranges around rates and model results. | Any cost figure. Riders affected. Minutes of delay beyond 30. Rates per km after September 2023. | Ridership by line and time of day. Duration in minutes. A cost per incident or per delay-minute. Km actually run, up to date. |
+| **Public Affairs / Safety** | Clarity on user impact, communication risk, rare severe events | Counts of the rarest events: 524 train incidents of 30 minutes or more (54 to 102 per year), evacuations, fire and smoke symptoms, including in stations. | People affected or injured. Severity of station incidents, which all sit in the lowest duration bin. Whether an incident was a full stop or a slowdown, and which segment of the line was affected. Anything about communications. With so few severe events, any rate or model for them is imprecise. | Passengers affected per incident. Impact type (full stop or slowdown) and the segment affected. A severity or injury field. Duration of station incidents. Complaints and communication logs. |
+| **Trend reliability** (all three) | To know whether trends reflect reliability, service volume, reporting or classification | For incidents of 5 minutes or more, the counts follow the STM's published indicator month by month, so their trend can be trusted. Service volume explains little of the change in counts. | Trends in incidents under 5 minutes: the 2025 drop, the drift in symptom and indicator coding, and the 2024 episode where the recorded symptom was wrong cannot be separated from logging practice. Rates per rider. | Documented changes to logging rules and code lists, with dates. Km actually run and ridership. A stable symptom coding, or a mapping between versions. |
+
+**What this implies for the target definition (step 3).**
+
+- A target can only be a threshold on the duration bins, and the part of the
+  data that is externally validated starts at 5 minutes. Thresholds at or
+  above 5 minutes rest on consistent records; anything that depends on the
+  count of shorter incidents inherits the logging uncertainty.
+- The stakeholders pull in different directions: escalation needs enough
+  positive cases to learn and evaluate on, while rare severe events (30
+  minutes or more) are what Public Affairs cares about but number only 54 to
+  102 a year. Step 3 has to weigh that trade-off explicitly.
+
 ## Steps
 
 Time estimates are rough and add up to about 3 hours (180 minutes).
