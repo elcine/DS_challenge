@@ -16,11 +16,11 @@ each one is recorded in the [Decision log](#decision-log).
 - One commit per step, with a clear message.
 - The challenge instructions (`brief/*.docx`) stay local and are not copied into the repo.
 
-## Data observations
+## Initial observations (to verify in exploration)
 
-First read-only look at the two raw files and their data dictionaries. Nothing
-here is a decision; these are the facts the later steps have to deal with.
-Numbers will be re-derived and confirmed in steps 1 and 2.
+First read-only look at the two raw files and their data dictionaries. These
+are provisional: nothing here is a decision or a confirmed finding. Each
+observation is re-checked in step 2, where it is either confirmed or corrected.
 
 ### File formats
 
@@ -147,6 +147,8 @@ target or features, and separate real reliability changes from service volume,
 reporting practice and classification effects.
 
 **What I'll do.** In the notebook, with helpers in `src/`:
+- Verify the initial observations: for each one listed above, show the check
+  that confirms or corrects it, and update that section of this plan with the result.
 - Volume over time: incidents per month by type and by line, with the COVID
   period and the last months of the data marked.
 - Reliability view: train incidents per million planned km, by line and year,
@@ -160,6 +162,8 @@ reporting practice and classification effects.
 - Location and time patterns: hour of service day, day of week, month, busiest locations.
 
 **Checks I'll show.**
+- A verification table with one row per initial observation: the observation,
+  the check run, the result, and a status of confirmed or corrected.
 - Each figure with the table behind it.
 - Totals in every breakdown reconcile to the cleaned table.
 - Km join coverage: share of incidents with a matching km denominator.
