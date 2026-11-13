@@ -10,7 +10,7 @@ from src.data import SINGLE_LINES, daily_km
 
 # Duration thresholds (in minutes) used to describe how long incidents last.
 # They follow the lower edges of the published duration bins.
-THRESHOLDS = [5, 10, 30]
+THRESHOLDS = [5, 10, 15, 30]
 
 # One fixed colour per metro line, used in every chart. These are not the
 # lines' own colours: green, orange and yellow side by side are hard to tell
@@ -22,7 +22,7 @@ LINE_COLORS = {
     "Ligne verte": "#1baf7a",
     "Ligne jaune": "#eda100",
 }
-SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]   # for other three-series charts
+SERIES_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]   # for other multi-series charts
 GRID_COLOR = "#e1e0d9"
 MUTED_COLOR = "#898781"
 
@@ -39,7 +39,7 @@ def train_incidents(incidents: pd.DataFrame) -> pd.DataFrame:
 
 
 def duration_summary(df: pd.DataFrame, by) -> pd.DataFrame:
-    """Count incidents per group and the share lasting at least 5, 10 and 30 min.
+    """Count incidents per group and the share lasting at least 5, 10, 15 and 30 min.
 
     `by` is a column name or a list of column names to group on.
     """
