@@ -14,25 +14,35 @@
   minutes or more (3.8% of train incidents); a model using only what is
   plausibly known at the start is trained on past years and tested on later
   ones, with 2025 held out.
-- **Headline result.** On 2025, the final model (logistic regression)
-  reaches a PR-AUC of 0.096 against 0.048 for a symptom-only rule and 0.033
-  by chance. Escalating the 10% highest-scored incidents would have caught
-  32 of 99 major incidents, about a third. Its probabilities are calibrated,
-  but rarely confident.
+- **Headline result.** On 2025, the final model (logistic regression) reaches
+  a PR-AUC of 0.096 against 0.048 for a symptom-only rule and 0.033 by chance.
+  Escalating the 10% highest-scored incidents would have caught 32 of 99 major
+  incidents, about a third. Its probabilities are reliable on average but
+  almost never high.
 - **A leak found and handled.** A first run scored 0.287 on 2025. That came
   from incidents whose location names a whole line instead of a place, a
   code that may be updated as an incident spreads. They are excluded from
   the model and both results are reported.
 - **Most useful findings.**
-  - The fields that would predict best (evacuation, emergency team, power
-    cut) are recorded without a time. If they were known in the first
-    minutes, PR-AUC would be about six times higher. Timestamping them is
-    the most valuable data change.
-  - Deliberate mischief accounts for 42% of major incidents, and customer
-    causes for a rising share.
+  - The fields that would predict best (evacuation, emergency team, power cut)
+    are recorded without a time, so we can't tell whether they're known early
+    enough to help. Used as if known at the start, they make PR-AUC about six
+    times higher, an upper bound rather than an achievable result.
+    Timestamping them would show how much of that gain is actually reachable,
+    which makes it one of the most useful data changes.
+  - Deliberate mischief (Méfait volontaire) accounts for 42% of major
+    incidents, and customer causes for a rising share.
   - Incidents of 5 minutes or more match the STM's published indicator month
-    by month, so that measure can be trusted; counts of shorter incidents
-    cannot.
+    by month, so that measure can be trusted. Shorter incidents have no such
+    check, and their 2025 drop remains unexplained.
+  - How incidents are recorded has shifted. Some symptom codes grew or shrank
+    several-fold: "Exploitation stations" went from 0.8% of train incidents in
+    2019 to 8.8% in 2025, while "Exploitation trains" fell from 12.3% to about
+    5%, possibly a change in coding rather than in operations (notebook
+    section 3.2, finding 14 in section 4). In 2024, about 350 incidents were
+    first labelled as rolling-stock problems before being traced to track.
+    Trends by category can't be read reliably without a record of when coding
+    rules change.
 
 ## Framing: which question this answers
 
@@ -93,7 +103,7 @@ for the modelling population: 28,887 train incidents, 1,028 of them major (3.6%)
   response indicators (power cut, emergency team, evacuation, damage,
   several lines) multiplies PR-AUC by about six. They are mostly
   consequences of a long incident, so this is not achievable at the start,
-  but it shows what timestamping those actions could be worth.
+  but it timestamps would show how much of that gain is actually reachable.
 - **Probabilities are calibrated but rarely confident.** Predicted and
   observed rates agree in every score band, yet only 9 of 3,004 holdout
   incidents get a probability above 20%. The scores rank incidents; they
@@ -141,6 +151,11 @@ not causes, and cause coding can drift over time.
   closer to 5%.
 - Keep a simple rule for incidents logged with no specific place, which are
   outside the model and 27% major: escalate fire or smoke by default.
+- In practice, score each train incident when it is logged; set the alert
+  threshold from the control room's escalation capacity; run it alongside
+  current practice first (a pilot) before acting on it; retrain each year as
+  new data arrives, allowing for incidents that are recorded late; and
+  monitor calibration and symptom coding over time, since both drift.
 
 **CFO: prioritisation and confidence**
 
@@ -149,42 +164,49 @@ not causes, and cause coding can drift over time.
   per million planned km while the orange line falls from 1.43 to 0.80.
 - Prioritise with the driver analysis: deliberate mischief is 42% of major
   incidents, and customer causes are a rising share.
-- Plan with: expected major incidents = planned km × incident rate per km ×
-  probability of becoming major. The model's probabilities are calibrated
-  but rarely confident, so they support expected counts over many incidents,
-  not a verdict on one. Financial burden cannot be measured with this data.
+- Prioritise spending by whether a line needs fewer incidents or shorter ones.
+  Split major incidents per million km into frequency (incidents per million
+  km) and severity (share that become major): prevention budgets address the
+  first, response and escalation the second. On the green line, both rose: the
+  share becoming major jumped in 2020 (2.1% to 4.8%) and stayed between about
+  4% and 5% through 2023, while incidents per million planned km kept rising
+  (47.3 to 69.8 from 2020). The lasting rise in severity, not seen on the
+  orange line, is worth investigating before deciding where to invest.
 
 **Public Affairs / Safety: severe events and user impact**
 
-- Use 30 minutes or more as a proxy for rare severe events: 524 train
-  incidents since 2019 (54 to 102 a year); 78% involve an evacuation and 26%
-  start with a fire or smoke symptom.
+- Prepare communication for the incidents most likely to become severe. Of the
+  524 train incidents of 30 minutes or more since 2019 (54 to 102 a year), 78%
+  involved an evacuation and 26% started with a fire or smoke symptom. Fire or
+  smoke at the start is the strongest warning sign among fields known at the start.
 - Track evacuations and fire or smoke directly, including in stations:
   462 station fire or smoke incidents since 2019, open for a median of 36
   minutes, and invisible in service indicators (notebook section 10).
-- The data cannot say how many people were affected, whether service stopped
-  or slowed, or which segment was affected.
+- Record riders affected and impact type before relying on this data for
+  public statements. The data can't say how many people were affected, whether
+  service stopped or slowed, or which segment was affected.
 
 **Trend reliability**
 
 - Incidents of 5 minutes or more can be trusted: month by month their count
   follows the STM's published indicator (correlation 0.995 for 2024, 0.977
   for 2025).
-- Shorter incidents cannot: their count depends on logging practice, and
-  their 2025 decline has no confirmed explanation.
+- Shorter incidents have no such check: their count depends on logging
+  practice, and their 2025 decline has no confirmed explanation.
 
 **Data collection**
 
 | Add | Why |
 |---|---|
-| Timestamps for response actions (evacuation, emergency team, power cut) | The largest possible gain: PR-AUC about six times higher if known early |
+| Timestamps for response actions (evacuation, emergency team, power cut) | Shows which actions are known early enough to improve escalation; the upper bound is about six times the headline PR-AUC |
 | A timestamp for when the location is recorded or updated | Settles the line-list location question |
-| Exact delay minutes | Replaces eight bins; allows cost and severity analysis |
+| A reliable delay measure in minutes | Replaces the eight bins; the start and end times give only an upper bound. Allows cost and severity analysis |
 | Impact type (full stop or slowdown) and segment affected | User impact and communication |
 | Ridership by line and time | People affected; rates per rider |
 | Km actually run, up to date | Reliability rates after September 2023 |
 | Km and fleet in service by train model | Separates fewer old trains from better reliability |
 | A changelog of classification rules | Tells real trends from coding changes |
+| Definitions of each cause category (e.g. "méfait volontaire") | The largest category of major incidents is not defined, so targeted action needs to know what it covers |
 
 ## Approach
 
@@ -193,7 +215,7 @@ considered.
 
 | Decision | Choice | Reason |
 |---|---|---|
-| [D1](PLAN.md#d1-treatment-of-flagged-rows-step-1) Flagged rows | Keep every row; trust the published duration bin over end minus start time | The two disagree for 525 train incidents and the data cannot say which is right; a sensitivity run shows it does not matter |
+| [D1](PLAN.md#d1-treatment-of-flagged-rows-step-1) Flagged rows | Keep every row; trust the published duration bin over end minus start time | The two disagree for 525 train incidents and the data cannot say which is right; a sensitivity run shows it makes little difference (PR-AUC changes by less than 0.01) |
 | [D2](PLAN.md#d2-target-definition-and-modelling-population-step-3) Target | Train incidents of 15 minutes or more; 30 minutes or more as a secondary view | Station incidents can never be positive; 15 minutes is the lowest threshold defensible as "major" |
 | [D3](PLAN.md#d3-feature-sets-step-4) Features | Headline set: fields known at the start plus three first-report fields; a strict set and an upper-bound set as brackets | Chosen by availability at the start, not by a selection algorithm, because the main risk is leakage |
 | [D4](PLAN.md#d4-validation-scheme-metrics-and-baselines-step-5) Validation | Four yearly folds (2021 to 2024), each trained on earlier years; 2025 held out; PR-AUC, alert budgets, calibration; bootstrap by service day | Train on the past, test on what comes next; pooled folds give 652 major incidents for model comparison |
@@ -230,22 +252,29 @@ boosting stays reported alongside.
 - The official duration exists only as eight bins, the top one open-ended.
   Start and end times give an elapsed time, but it is a less reliable
   measure (D1), so delay minutes are estimates.
-- Elapsed time is an upper bound on disruption: the delay window may include partial service.
-- Durations reflect how the STM responds today; acting on predictions would change future data.
+- Elapsed time is an upper bound on disruption: the delay window may include
+  partial service.
+- Durations reflect how the STM responds today; acting on predictions would
+  change future data.
 - Service volume is planned km, not km actually run, and ends in September 2023.
 - No ridership and no cost data.
-- Classification drifts: the mix of symptom codes changes; in August and
-  September 2024 about 350 incidents were first recorded as rolling-stock
-  problems and later traced to track; short incidents fall sharply in 2025.
+- Classification drifts: the mix of symptom codes changes (Summary; notebook
+  section 3.2, finding 14 in section 4); in August and September 2024 about
+  350 incidents were first recorded as rolling-stock problems and later traced
+  to track; short incidents fall sharply in 2025.
 - The data dictionary does not say when most fields are recorded.
-- Station incidents carry no service-delay duration, so they are described, not modelled.
+- Station incidents carry no service-delay duration, so they are described,
+  not modelled.
 
 **About the analysis**
 
-- Few major incidents: 99 in the 2025 holdout (41 of 30 minutes or more), so intervals are wide.
+- Few major incidents: 99 in the 2025 holdout (41 of 30 minutes or more), so
+  intervals are wide.
 - COVID years (2020 and 2021) are in the training data.
-- The holdout was looked at before decision D7, and D8 overrode a rule fixed in advance.
-- The line-list location question is open; 6.8% of major incidents are outside the model.
+- The holdout was looked at before decision D7, and D8 overrode a rule fixed
+  in advance.
+- The line-list location question is open; 6.8% of major incidents are outside
+  the model.
 - Results are associations, not causes.
 
 ## Further analysis (not done in the time available)
@@ -277,7 +306,8 @@ file names); the portal updates the incidents dataset monthly.
   conventions. The details and their verification are in notebook section 1
   and in [PLAN.md](PLAN.md#initial-observations-to-verify-in-exploration).
 - **External reference:** monthly values of the STM's published incident
-  indicator, transcribed by hand, in `data/external/` (source noted in the file).
+  indicator, transcribed by hand, in `data/external/` (source noted in the
+  file).
 
 ## Repository layout and how to run
 
@@ -314,4 +344,20 @@ jupyter nbconvert --to notebook --execute --inplace notebooks/analysis.ipynb
 
 ## Use of AI
 
-_To be written by the author._
+- **Understanding the problem.** Before starting, I used Claude to work
+  through the brief, understand the data and research context. Several
+  hypotheses tested here came from that, such as the 2025 strikes, the
+  Saint-Michel closure and the STM's published reliability indicator.
+- **Plan first, then step by step.** With Claude Code, I started by agreeing a
+  plan (PLAN.md) before writing any code, then worked through it one step at a
+  time. At each step it proposed options with trade-offs, I made the decision
+  (logged as D1 to D8), it ran the checks, and I reviewed them before
+  committing.
+- **Checking.** Verification went both ways. I confirmed the STM figures
+  against the source document and tightened claims the data didn't fully
+  support; Claude Code corrected some of my hypotheses and flagged the
+  location-code leak (D7).
+- **Record.** Tools: Claude (preparation) and Claude Code in VS Code (build).
+  Apart from the challenge instructions, only the public datasets and
+  documents were shared. The step-by-step process is visible in PLAN.md and
+  the commit history.
