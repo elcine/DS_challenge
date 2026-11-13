@@ -84,8 +84,7 @@ that cannot be verified, and guessing values would be invention.
 - **Definition.** A major interruption is a train incident of 15 minutes or
   more: 1,103 incidents, 3.8%. This is the lowest threshold that can be
   defended as "major" in front of stakeholders. Incidents of 30 minutes or
-  more (524) are reported as a secondary view on the same model scores, and
-  one sensitivity run uses 10 minutes or more.
+  more (524) are reported as a secondary view on the same model scores.
   Thirty minutes or more is used as a proxy for rare severe events; severity
   for Public Affairs / Safety is also covered descriptively, through
   evacuations and fire or smoke incidents, including station incidents.
@@ -96,7 +95,8 @@ that cannot be verified, and guessing values would be invention.
   notebook, section 2.6.4). The computed time disagrees with the bin for 525
   train incidents (1.8%), mostly by being longer than the bin, and the data
   cannot say which of the two is right. A sensitivity run in the modelling
-  step excludes those 525 rows to show whether the choice matters.
+  step excludes those 525 rows, from training and test, to show whether the
+  choice matters.
 
 [Options considered: D2](PLAN.md#d2-target-definition-and-modelling-population-step-3).
 
@@ -126,9 +126,8 @@ that cannot be verified, and guessing values would be invention.
   first. The set is small (7 to 10 fields), and a statistical search on a few
   hundred positives would risk fitting noise and would have to be repeated
   inside every training fold. Instead, regularised logistic regression
-  shrinks weak features, permutation importance on the validation folds
-  checks each feature's contribution, and planned ablations compare feature
-  sets explicitly.
+  shrinks weak features, and the three nested feature sets are compared
+  explicitly.
 - **Associations, not causes.** Feature effects describe which incidents
   tend to be long, not what makes them long.
 
@@ -159,6 +158,19 @@ that cannot be verified, and guessing values would be invention.
 ## Results
 
 _To be completed._
+
+## Further analysis (not done in the time available)
+
+Checks that were planned and then cut to keep the modelling step focused.
+Each would test how far the results depend on one choice.
+
+| Analysis | What it would show |
+|---|---|
+| Ablation: headline set without "train run attached" | How much of the headline set's gain over the strict set comes from that one field, whose recording drifts and which may partly overlap with the outcome |
+| Sliding training window (previous 3 years only) | Whether older years, with different reporting practice, help or hurt |
+| Target at 10 minutes or more | Whether conclusions hold under a looser definition of "major" |
+| Excluding the 280 rows whose location is a line list | Whether the residual leak accepted in the location grouping drives performance |
+| Permutation importance on the validation folds | Each feature's contribution, measured without relying on model coefficients |
 
 ## Recommendations
 

@@ -28,7 +28,6 @@ from src.data import SINGLE_LINES
 TARGETS = {
     "is_major": 15,        # primary target
     "is_severe": 30,       # secondary view, same model scores
-    "is_10min_plus": 10,   # sensitivity run
 }
 
 # --------------------------------------------------------------------------
@@ -68,8 +67,6 @@ FEATURE_SETS = {
     "strict": STRICT_FEATURES,
     # Headline model.
     "headline": STRICT_FEATURES + FIRST_REPORT_FEATURES,
-    # Ablation: the headline set without the "train run attached" field.
-    "headline_without_run": STRICT_FEATURES + ["door_involved", "emergency_brake"],
     # Upper bound, not a usable model.
     "upper_bound": STRICT_FEATURES + FIRST_REPORT_FEATURES + RESPONSE_FEATURES,
 }
@@ -160,7 +157,8 @@ def build_model_table(incidents: pd.DataFrame) -> pd.DataFrame:
     table["service_date"] = train["service_date"]
     table["service_year"] = train["service_year"]     # for splitting by time, not a feature
     table["start_minutes"] = train["start_minutes"]   # for ordering within a day
-    table["flag_time_bin_mismatch"] = train["flag_time_bin_mismatch"]   # for the D1 sensitivity run
+    # Kept for the sensitivity run that excludes these rows (decision D1); not a feature.
+    table["flag_time_bin_mismatch"] = train["flag_time_bin_mismatch"]
 
     # Targets: True when the duration bin starts at or above the threshold.
     for name, minutes in TARGETS.items():

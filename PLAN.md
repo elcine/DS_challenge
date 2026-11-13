@@ -182,7 +182,7 @@ Based on the step 2 findings (notebook section 4). No new analysis.
 ## Steps
 
 Time estimates are rough. The original budget was 3 hours (180 minutes); the
-driver analysis and extra runs added to step 6 bring the total to about 200.
+driver analysis added to step 6 brings the total to about 190.
 
 ### Step 0: Setup (~10 min)
 
@@ -330,35 +330,32 @@ unknown timing. Decided: see D3 in the Decision log.
 **Decision needed.** Validation scheme, metrics and baselines. Decided: see D4
 in the Decision log.
 
-### Step 6: Modelling and driver analysis (~55 min)
+### Step 6: Modelling and driver analysis (~45 min)
 
 **Goal.** A predictive framework evaluated honestly under the agreed scheme.
 
+**Scope.** Reduced to the items below to fit the time budget (decision D5).
+The runs that were cut are listed in the README under "Further analysis (not
+done in the time available)".
+
 **What I'll do.**
-- Propose candidate models only now, with trade-offs, given the decided target
-  and features.
-- After the decision: implement `src/model.py` and `src/evaluate.py`, fit, and
-  evaluate against the baselines.
-- One sensitivity run that excludes the 525 train incidents whose elapsed time
-  disagrees with their duration bin (decision D1), compared with the main run.
-- The same model scores evaluated against the secondary target, 30 minutes or
-  more (decision D2).
-- One sensitivity run with the target set at 10 minutes or more (decision D2).
-- Feature sets (decision D3): the headline set, the strict set as a lower
-  bound, and the response-indicator set as an upper bound labelled "if these
-  indicators were known in the first minutes".
-- One ablation run: the headline set without "train run attached", to show
-  how much of the gain over the strict set comes from that field alone.
-- Performance per fold, because the symptom's relation to the target drifts.
-- Model budget, to keep the step manageable: gradient boosting is run on the
-  headline set only; logistic regression is used for the strict set, the
-  upper bound, the ablation and the sensitivity runs.
-- Permutation importance on the validation folds for the headline model, to
-  check each feature's contribution (decision D3: no automated feature
-  selection).
-- One check on the residual leak accepted in D3: headline model test
-  performance with the 280 line-list-location rows excluded, to show that
-  they do not drive the results.
+- Propose candidate models, with trade-offs, given the decided target and
+  features. After the decision: implement `src/model.py` and
+  `src/evaluate.py`.
+- Both baselines: constant rate, and symptom-only rate table.
+- Headline feature set with logistic regression and with gradient boosting.
+- Strict set (lower bound) and upper-bound set ("if these indicators were
+  known in the first minutes") with logistic regression.
+- Results per fold (expanding window, test years 2021 to 2024) and pooled.
+- The 2025 holdout, scored once, with bootstrap intervals (service days,
+  1,000 resamples).
+- Calibration of the predicted probabilities.
+- The secondary view: the same model scores evaluated against 30 minutes or
+  more.
+- One sensitivity run on the headline set (decision D1): same folds and
+  holdout, with the 525 time/bin mismatch rows excluded from training and
+  test, compared with the main run. It tests the key assumption behind the
+  target: trusting the published duration bin over the computed time.
 - **Driver analysis** (about 10 to 15 minutes, after the models). Looking
   back at historical incidents, break down major incidents (15 minutes or
   more) by primary cause, secondary cause, line and location:
@@ -382,8 +379,8 @@ in the Decision log.
 **Checks I'll show.**
 - Metrics per fold and on the final holdout, with uncertainty.
 - Comparison against baselines.
-- Which features drive predictions, and whether that is plausible.
-- Error analysis: where the model fails.
+- Which features drive predictions, read from the logistic regression
+  coefficients, and whether that is plausible.
 - Calibration of the predicted probabilities. If it is poor, the "calibrated
   probabilities" cell in the stakeholder table is softened.
 
@@ -450,8 +447,9 @@ disagree.
   Excluding rows would rely on a rule that cannot be verified, and guessing
   values would be invention. The date/time disagreement only matters if hour
   of day becomes a feature, so it is revisited in step 4.
-- **Follow-up.** Step 6 includes one sensitivity run that excludes the 525
-  time/bin mismatches, to show whether the choice changes the results.
+- **Follow-up.** Step 6 includes one sensitivity run on the headline set
+  that excludes the 525 time/bin mismatches from training and test, to show
+  whether the choice changes the results.
 
 ### D2. Target definition and modelling population (step 3)
 
@@ -484,7 +482,8 @@ Evidence: notebook section 5.
     incidents, including station incidents (step 7).
   - **A, 5 minutes or more**, stays as the link to the STM's indicator in the
     reliability view. It is not treated as "major".
-  - **One sensitivity run at B, 10 minutes or more**, in step 6.
+  - **A sensitivity run at B, 10 minutes or more**: not run, listed as
+    further analysis (D5).
 - **Reason.** 15 minutes is the lowest threshold that can be defended as
   "major" in front of stakeholders. Noise is less of a concern than the
   single-year margins suggest, because model comparison pools the
@@ -538,9 +537,10 @@ Evidence: notebook section 6. Implemented in `src/features.py`.
   search on a few hundred positives per training fold (289 to 760) would risk
   fitting noise, and would have to be repeated inside each training fold to
   avoid leaking test information. Instead: regularised logistic regression
-  shrinks weak features, permutation importance on the validation folds
-  checks each feature's contribution, and the planned ablations compare
-  feature sets explicitly.
+  shrinks weak features, and the nested feature sets (strict, headline,
+  upper bound) are compared explicitly. Permutation importance and a
+  single-field ablation would add to this; they are listed as further
+  analysis (D5).
 - **Reason.** Option 2 is what an operator plausibly has when an incident
   starts. Options 1 and 3 bracket it: one shows what is lost by trusting only
   documented fields, the other what could be gained if response actions were
@@ -549,15 +549,16 @@ Evidence: notebook section 6. Implemented in `src/features.py`.
   - "Train run attached" may partly overlap with the outcome (with no train
     attached, no train delay can be measured), and its recording drifts
     (14.7% to 23.0% of train incidents without a run). An ablation run,
-    option 2 without this field, shows how much of the gain over option 1
-    comes from it. If most of it does, say so.
+    option 2 without this field, would show how much of the gain over option
+    1 comes from it. Not run: listed as further analysis (D5). The logistic
+    regression coefficient for this field is reported instead.
   - The symptom's relation to the target drifts (fire or smoke: 8% in 2019,
     26% in 2025), so performance is shown per fold.
   - Feature effects are associations, not causes.
   - Residual leak, accepted and documented: line-list location codes (280
     rows, 26.8% positive) sit inside the "other" location group (4,574 rows,
-    8.2% positive when the grouping is learned on 2019 to 2023). Step 6
-    checks the headline model with those 280 rows excluded.
+    8.2% positive when the grouping is learned on 2019 to 2023). A check
+    with those 280 rows excluded is listed as further analysis (D5).
 
 ### D4. Validation scheme, metrics and baselines (step 5)
 
@@ -572,8 +573,8 @@ Evidence: notebook section 7. Fold construction in `src/validation.py`.
 | 3. Single split | Train 2019 to 2023, test 2024 | Simplest | One year (222 positives) decides the model |
 
 - **Validation choice.** Scheme 1, with per-fold results shown, for model
-  comparison. Scheme 2 only as a sensitivity run if per-fold results show
-  older data hurting.
+  comparison. Scheme 2 as a sensitivity run is listed as further analysis
+  (D5).
 - **Holdout.** 2025 (January to September): 3,046 train incidents, 121
   positives at 15 minutes or more, 54 at 30 minutes or more. The final model
   is trained on 2019 to 2024. The holdout is used once and never to choose
@@ -604,3 +605,32 @@ Evidence: notebook section 7. Fold construction in `src/validation.py`.
 - **Reason.** Pooling four yearly folds gives 693 test positives for model
   comparison, against 121 to 222 for any single year, while keeping the most
   recent year untouched for one final, honest estimate.
+
+### D5. Scope of step 6 reduced (time budget)
+
+- **Options.**
+  1. Keep every run added during steps 1 to 5.
+  2. Keep the core evaluation and move the extra runs to a "further analysis"
+     list.
+- **Choice.** Option 2.
+  - **Kept:** both baselines; headline set with logistic regression and
+    gradient boosting; strict and upper-bound sets with logistic regression;
+    per-fold and pooled results; the 2025 holdout with bootstrap intervals;
+    calibration; the 30-minute secondary view on the same scores; the
+    sensitivity run excluding the 525 time/bin mismatches, on the headline
+    set (D1), because it tests the key assumption behind the target; the
+    driver analysis. Feature contributions are read from the logistic regression
+    coefficients.
+  - **Moved to the README, "Further analysis (not done in the time
+    available)":** the run-attached ablation (D3), the sliding-window
+    sensitivity (D4), the 10-minute target sensitivity (D2), the residual-leak check
+    excluding the 280 line-list-location rows (D3), and permutation
+    importance (D3).
+- **Reason.** Time budget. Step 6 had grown to more than ten separate runs.
+  The kept items answer the brief (a justified, validated predictive
+  framework plus what drives major incidents); the moved items are
+  robustness checks whose absence is stated openly.
+- **Effect on earlier entries.** Where D1 to D4 mention a sensitivity run,
+  ablation or permutation importance "in step 6", read it as "listed as
+  further analysis". The exception is the mismatch sensitivity run in D1,
+  which stays in step 6.
