@@ -103,7 +103,7 @@ for the modelling population: 28,887 train incidents, 1,028 of them major (3.6%)
   response indicators (power cut, emergency team, evacuation, damage,
   several lines) multiplies PR-AUC by about six. They are mostly
   consequences of a long incident, so this is not achievable at the start,
-  but it timestamps would show how much of that gain is actually reachable.
+  but timestamps would show how much of that gain is actually reachable.
 - **Probabilities are calibrated but rarely confident.** Predicted and
   observed rates agree in every score band, yet only 9 of 3,004 holdout
   incidents get a probability above 20%. The scores rank incidents; they
@@ -178,7 +178,7 @@ not causes, and cause coding can drift over time.
 - Prepare communication for the incidents most likely to become severe. Of the
   524 train incidents of 30 minutes or more since 2019 (54 to 102 a year), 78%
   involved an evacuation and 26% started with a fire or smoke symptom. Fire or
-  smoke at the start is the strongest warning sign among fields known at the start.
+  smoke is the strongest warning sign among fields known at the start.
 - Track evacuations and fire or smoke directly, including in stations:
   462 station fire or smoke incidents since 2019, open for a median of 36
   minutes, and invisible in service indicators (notebook section 10).
