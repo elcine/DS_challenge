@@ -15,6 +15,9 @@ each one is recorded in the [Decision log](#decision-log).
 - Code stays simple and commented: every line must be explainable in the interview.
 - One commit per step, with a clear message, made only after the step has been
   reviewed and the commit approved.
+- Each decision is recorded in the Decision log with the options considered.
+  The README Approach section then gets two or three lines on what was chosen
+  and why, with a link back to the log.
 - The challenge instructions (`brief/*.docx`) stay local and are not copied into the repo.
 - Each step has a rough time estimate. If a step is running over, I flag it
   before continuing, with what is left and what could be cut.
@@ -284,8 +287,8 @@ stakeholders would recognise.
 - Number of positives that would fall in a typical test period, as an
   indication of how noisy evaluation would be.
 
-**Decision needed.** Target definition and modelling population. Recorded in
-the Decision log.
+**Decision needed.** Target definition and modelling population. Decided: see
+D2 in the Decision log.
 
 ### Step 4: Feature decision (~20 min)
 
@@ -316,6 +319,8 @@ unknown timing. Recorded in the Decision log.
 - Propose metrics tied to the stakeholders' questions and to the class balance
   of the chosen target.
 - Propose the baselines a model must beat.
+- Include a calibration check among the metrics. The stakeholder table
+  promises the CFO calibrated probabilities; that claim has to be tested.
 
 **Checks I'll show.**
 - Fold boundaries, rows and positives per fold.
@@ -335,12 +340,17 @@ Decision log.
   evaluate against the baselines.
 - One sensitivity run that excludes the 525 train incidents whose elapsed time
   disagrees with their duration bin (decision D1), compared with the main run.
+- The same model scores evaluated against the secondary target, 30 minutes or
+  more (decision D2).
+- One sensitivity run with the target set at 10 minutes or more (decision D2).
 
 **Checks I'll show.**
 - Metrics per fold and on the final holdout, with uncertainty.
 - Comparison against baselines.
 - Which features drive predictions, and whether that is plausible.
 - Error analysis: where the model fails.
+- Calibration of the predicted probabilities. If it is poor, the "calibrated
+  probabilities" cell in the stakeholder table is softened.
 
 **Decision needed.** Model choice. Recorded in the Decision log.
 
@@ -407,3 +417,44 @@ disagree.
   of day becomes a feature, so it is revisited in step 4.
 - **Follow-up.** Step 6 includes one sensitivity run that excludes the 525
   time/bin mismatches, to show whether the choice changes the results.
+
+### D2. Target definition and modelling population (step 3)
+
+Evidence: notebook section 5.
+
+- **Population options.**
+  1. Train incidents only (29,167 rows).
+  2. All incidents (45,561 rows).
+- **Population choice.** Train incidents only.
+- **Reason.** All 16,394 station incidents are in the lowest duration bin, so
+  they can never be positive. Including them would only dilute the rate and
+  flatter any model.
+
+- **Target options** (train incidents; positives, rate, positives per year).
+
+| Option | Positives | Rate | Per year | Main argument for | Main argument against |
+|---|---|---|---|---|---|
+| A. 5 min or more | 6,413 | 22.0% | 736 to 1,121 | The STM's own published indicator; validated against it | One incident in five; not "major" |
+| B. 10 min or more | 2,036 | 7.0% | 229 to 396 | Selective, with a few hundred positives per year | No external definition; highest share of time/bin mismatches |
+| C. 15 min or more | 1,103 | 3.8% | 121 to 222 | Defensible as "major"; evacuation in over half | Fewer positives; single-year margins near ±9% |
+| D. 30 min or more | 524 | 1.8% | 54 to 102 | Clearest "rare severe event" | 54 positives in 2025; too few to compare models on |
+| E. Ordinal (all bins) | n/a | n/a | n/a | Uses all the information | Harder to build, explain and evaluate in the time available |
+
+- **Target choice.**
+  - **Primary: C, 15 minutes or more.**
+  - **Secondary view: D, 30 minutes or more**, evaluated on the same model
+    scores, for Public Affairs / Safety. Thirty minutes or more is used as a
+    proxy for rare severe events; severity for Public Affairs / Safety is
+    also covered descriptively, through evacuations and fire or smoke
+    incidents, including station incidents (step 7).
+  - **A, 5 minutes or more**, stays as the link to the STM's indicator in the
+    reliability view. It is not treated as "major".
+  - **One sensitivity run at B, 10 minutes or more**, in step 6.
+- **Reason.** 15 minutes is the lowest threshold that can be defended as
+  "major" in front of stakeholders. Noise is less of a concern than the
+  single-year margins suggest, because model comparison pools the
+  rolling-origin folds for 2021 to 2024 (693 positives at 15 minutes or
+  more), and 2025 stays out as the one-time final holdout.
+- **Open point for step 5.** The validation scheme is still to be confirmed
+  in step 5. The pooled count depends on it: 693 positives over 2021 to 2024
+  with 2025 held out, or 814 if 2025 were included in the folds.
